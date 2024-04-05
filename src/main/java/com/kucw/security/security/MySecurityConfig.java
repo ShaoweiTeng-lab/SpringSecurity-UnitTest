@@ -6,10 +6,13 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,17 +32,22 @@ public class MySecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         return http
-                .csrf(csrf -> csrf.disable())
+                // 設定 Session 的創建機制
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+                // 設定CSRF 保護 , 當前端發post put  delete 時 需檢查 XSRF-TOKEN
+                .csrf(csrf ->// 表示在 cookie 中回傳 XSRF-TOKEN 給前端
+                        csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                .csrfTokenRequestHandler(csrfTokenRequestAttributeHandler())
+                                // 忽略特定api
+                                .ignoringRequestMatchers("/register","/userLogin")
+                )
                 .httpBasic(Customizer.withDefaults())
                 .formLogin(Customizer.withDefaults())
 
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/register").permitAll()
-                        .requestMatchers("/hello").authenticated()
-                        .requestMatchers("/welcome").hasRole("ADMIN")
-                        .anyRequest().denyAll()
+                        .requestMatchers("/register","/userLogin").permitAll()
+                        .anyRequest().authenticated()
                 )
-
                 .cors(cors -> cors
                         .configurationSource(createCorsConfig()))
 
@@ -54,5 +62,11 @@ public class MySecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**",config);
         return  source;
+    }
+
+    private CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler(){
+        CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
+        csrfTokenRequestAttributeHandler.setCsrfRequestAttributeName(null);
+        return csrfTokenRequestAttributeHandler;
     }
 }

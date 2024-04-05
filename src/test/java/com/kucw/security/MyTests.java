@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -81,6 +82,49 @@ public class MyTests {
                 .andExpect(header().string("Access-Control-Allow-Origin","*"))
                 .andExpect(header().exists("Access-Control-Allow-Methods"))
                 .andExpect(header().string("Access-Control-Allow-Methods","GET"))
+                .andExpect(status().is(200));
+    }
+
+
+    /**
+     * 測試 CSRF
+     * */
+
+    /**
+     * 測試 沒帶上X-XSRF-TOKEN
+     * */
+    @Test
+    public  void testWelcomeNoCorsToken() throws Exception{
+            RequestBuilder requestBuilder = MockMvcRequestBuilders
+                    .post("/welcome")
+                    .with(httpBasic("test1","111"));
+            mockMvc.perform(requestBuilder)
+                    .andExpect(status().is(403));
+    }
+    /**
+     * 測試 帶上X-XSRF-TOKEN
+     * */
+
+    @Test
+    public  void testWelcomeWithCorsToken() throws Exception{
+        RequestBuilder requestBuilder = MockMvcRequestBuilders
+                .post("/welcome")
+                .with(httpBasic("test1","111"))
+                .with(csrf());
+        mockMvc.perform(requestBuilder)
+                .andExpect(status().is(200));
+    }
+
+    /**
+     * 測試 不用驗證的api
+     * */
+
+    @Test
+    public  void testWelcomeRegisterNoCorsToken() throws Exception{
+        RequestBuilder requestBuilder = MockMvcRequestBuilders
+                .post("/register")
+                .with(httpBasic("test1","111")) ;
+        mockMvc.perform(requestBuilder)
                 .andExpect(status().is(200));
     }
 }
